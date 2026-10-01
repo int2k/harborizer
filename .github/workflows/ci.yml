@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential curl file libayatana-appindicator3-dev libssl-dev \
+            libwebkit2gtk-4.1-dev libxdo-dev librsvg2-dev patchelf
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: rustfmt
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Check formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+      - name: Check Svelte and TypeScript
+        run: npm run check
+      - name: Test frontend logic
+        run: npm test
+      - name: Test Rust core
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: Build frontend
+        run: npm run build
