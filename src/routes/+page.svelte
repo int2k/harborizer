@@ -38,11 +38,11 @@
   let baseVessels = $derived(summary ? mapSummaryToVessels(summary) : []);
   let selectedDetail = $derived(selectedTaskDetail?.id === selectedId ? selectedTaskDetail.data : null);
   let vessels: Vessel[] = $derived(baseVessels.map((vessel) => {
-    if (vessel.id !== selectedId || !selectedDetail || vessel.decision) return vessel;
+    if (vessel.id !== selectedId || !selectedDetail) return vessel;
     const current = selectedDetail.current_state;
     const wait = waitForState(current.state);
     const stage = wait ? vessel.stage : stageFromResolver(current.state, current.detail ?? '', current.source);
-    return { ...vessel, stage, wait: wait ?? vessel.wait, state: current.state, prUrl: current.pr_url ?? vessel.prUrl };
+    return { ...vessel, stage, wait, state: current.state, prUrl: current.pr_url ?? vessel.prUrl };
   }));
   let selectedVessel = $derived(vessels.find((vessel) => vessel.id === selectedId) ?? null);
   let freshness: Freshness = $derived(summary
