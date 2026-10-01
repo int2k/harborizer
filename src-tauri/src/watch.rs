@@ -93,7 +93,9 @@ mod tests {
             }
         })
         .unwrap();
-        watcher.watch(dir.path(), RecursiveMode::NonRecursive).unwrap();
+        watcher
+            .watch(dir.path(), RecursiveMode::NonRecursive)
+            .unwrap();
         std::thread::sleep(Duration::from_millis(200));
 
         for _ in 0..3 {
