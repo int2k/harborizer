@@ -6,7 +6,7 @@
   import ConnectionSettings from '../lib/components/ConnectionSettings.svelte';
   import { classifyFreshness } from '../lib/freshness';
   import { fixtures, type FixtureName } from '../lib/fixtures';
-  import { mapSummaryToVessels, stageFromResolver, waitForState } from '../lib/stages';
+  import { applyResolverState, mapSummaryToVessels } from '../lib/stages';
   import type { Freshness, HomeSummary, Vessel } from '../lib/model';
   import {
     chooseFolder, desktopRuntime, listenForSummaryChanges, openPullRequest, readSummary,
@@ -39,10 +39,7 @@
   let selectedDetail = $derived(selectedTaskDetail?.id === selectedId ? selectedTaskDetail.data : null);
   let vessels: Vessel[] = $derived(baseVessels.map((vessel) => {
     if (vessel.id !== selectedId || !selectedDetail) return vessel;
-    const current = selectedDetail.current_state;
-    const wait = waitForState(current.state);
-    const stage = wait ? vessel.stage : stageFromResolver(current.state, current.detail ?? '', current.source);
-    return { ...vessel, stage, wait, state: current.state, prUrl: current.pr_url ?? vessel.prUrl };
+    return applyResolverState(vessel, selectedDetail.current_state);
   }));
   let selectedVessel = $derived(vessels.find((vessel) => vessel.id === selectedId) ?? null);
   let freshness: Freshness = $derived(summary

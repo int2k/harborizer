@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapSummaryToVessels, stageFromResolver } from './stages';
+import { applyResolverState, mapSummaryToVessels, stageFromResolver } from './stages';
 
 const summary = (overrides: Record<string, unknown> = {}) => ({
   schema: 'fm-secondmate-home-summary.v1',
@@ -119,5 +119,30 @@ describe('stageFromResolver', () => {
   it('leaves unknown resolver states unknown', () => {
     expect(stageFromResolver('mystery', 'unrecognized result')).toBe('unknown');
     expect(stageFromResolver('blocked', '')).toBe('unknown');
+  });
+});
+
+describe('applyResolverState', () => {
+  const pausedVessel = () => mapSummaryToVessels(summary({
+    active_children: [{ id: 'v', kind: 'ship', state: 'paused' }], decisions_open: [], queued: [], landed: [], holds: [],
+  }) as never)[0];
+
+  it('starts from a stale paused badge', () => {
+    expect(pausedVessel()).toMatchObject({ wait: 'paused', stage: 'under-way' });
+  });
+
+  it('clears the stale wait badge and moves to inspection when the resolver says validating', () => {
+    expect(applyResolverState(pausedVessel(), { state: 'validating', source: 'run-step' }))
+      .toMatchObject({ wait: null, stage: 'inspection', state: 'validating' });
+  });
+
+  it('keeps the stage and shows the wait when the resolver reports blocked', () => {
+    expect(applyResolverState(pausedVessel(), { state: 'blocked' }))
+      .toMatchObject({ wait: 'blocked', stage: 'under-way' });
+  });
+
+  it('shows unknown when the resolver state has no stage evidence', () => {
+    expect(applyResolverState(pausedVessel(), { state: 'mystery' }))
+      .toMatchObject({ wait: null, stage: 'unknown' });
   });
 });

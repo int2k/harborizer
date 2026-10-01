@@ -57,6 +57,15 @@ export function stageFromResolver(state: string, detail: string, source = ''): H
   return stageForState(state);
 }
 
+export function applyResolverState(
+  vessel: Vessel,
+  current: { state: string; detail?: string | null; source?: string; pr_url?: string | null },
+): Vessel {
+  const wait = waitForState(current.state);
+  const stage = wait ? vessel.stage : stageFromResolver(current.state, current.detail ?? '', current.source);
+  return { ...vessel, stage, wait, state: current.state, prUrl: current.pr_url ?? vessel.prUrl };
+}
+
 export function mapSummaryToVessels(summary: HomeSummary): Vessel[] {
   const vessels = new Map<string, Vessel>();
   const decisions = new Map<string, string[]>();
