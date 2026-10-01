@@ -107,6 +107,7 @@
               <circle cx={x + 33} cy={vesselY - 8} r="4" />
             </g>
           {/if}
+          {#if vessel.wait}<text x={x} y={vesselY + 50} text-anchor="middle" class="vessel-label">{vessel.wait}</text>{/if}
           <text x={x} y={vesselY + 36} text-anchor="middle" class="vessel-label">{vessel.title.length > 19 ? `${vessel.title.slice(0, 18)}…` : vessel.title}</text>
         </g>
       {/each}

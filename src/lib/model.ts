@@ -20,6 +20,8 @@ export interface HomeSummary {
 
 export type HarborStage = 'setting-out' | 'under-way' | 'inspection' | 'quay' | 'arrived' | 'unknown';
 
+export type VesselWait = 'paused' | 'blocked' | 'held';
+
 export interface Vessel {
   id: string;
   title: string;
@@ -27,6 +29,7 @@ export interface Vessel {
   kind: string;
   stage: HarborStage;
   state: string;
+  wait: VesselWait | null;
   detail: string;
   decision: string | null;
   since: string | null;

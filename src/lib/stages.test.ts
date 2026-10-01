@@ -27,13 +27,13 @@ describe('mapSummaryToVessels', () => {
     const vessels = mapSummaryToVessels(summary() as never);
 
     expect(vessels.map(({ id, stage }) => [id, stage])).toEqual([
-      ['sail-17', 'inspection'],
+      ['sail-17', 'under-way'],
       ['sail-18', 'setting-out'],
       ['sail-19', 'arrived'],
     ]);
   });
 
-  it('keeps a held queued item in inspection instead of resetting it to setting out', () => {
+  it('keeps a held queued item at setting out with a held badge', () => {
     const vessels = mapSummaryToVessels(summary({
       active_children: [], decisions_open: [],
       holds: [{ id: 'held-1', title: 'Review the breakwater', reason: 'Waiting on review', source: 'child-state' }],
@@ -41,7 +41,41 @@ describe('mapSummaryToVessels', () => {
       landed: [], endpoints: [],
     }) as never);
 
-    expect(vessels[0]?.stage).toBe('inspection');
+    expect(vessels[0]).toMatchObject({ stage: 'setting-out', wait: 'held' });
+  });
+
+  it('leaves a hold with no other evidence unknown', () => {
+    const vessels = mapSummaryToVessels(summary({
+      active_children: [], decisions_open: [], queued: [], landed: [], endpoints: [],
+      holds: [{ id: 'held-2', title: 'Idle', reason: 'Waiting' }],
+    }) as never);
+
+    expect(vessels[0]).toMatchObject({ stage: 'unknown', wait: 'held' });
+  });
+
+  it('only maps validation states to inspection', () => {
+    const stageOf = (state: string, extra: Record<string, unknown> = {}) => mapSummaryToVessels(summary({
+      active_children: [{ id: 'v', kind: 'ship', state, ...extra }], decisions_open: [], queued: [], landed: [], holds: [],
+    }) as never)[0];
+
+    expect(stageOf('validating').stage).toBe('inspection');
+    expect(stageOf('inspection').stage).toBe('inspection');
+    expect(stageOf('paused')).toMatchObject({ stage: 'under-way', wait: 'paused' });
+    expect(stageOf('blocked')).toMatchObject({ stage: 'under-way', wait: 'blocked' });
+    expect(stageOf('parked')).toMatchObject({ stage: 'under-way', wait: 'held' });
+    expect(stageOf('blocked', { pr_url: 'https://example.com/demo/pull/2' })).toMatchObject({ stage: 'quay', wait: 'blocked' });
+  });
+
+  it('flags a decision without changing the stage', () => {
+    const vessel = mapSummaryToVessels(summary() as never).find(({ id }) => id === 'sail-17');
+
+    expect(vessel).toMatchObject({ stage: 'under-way', decision: 'Choose the inlet boundary' });
+  });
+
+  it('shows an orphan decision as unknown', () => {
+    const vessels = mapSummaryToVessels(summary({ active_children: [], queued: [], landed: [] }) as never);
+
+    expect(vessels[0]).toMatchObject({ stage: 'unknown', decision: 'Choose the inlet boundary' });
   });
 
   it('marks a scout report without inventing a current state', () => {
@@ -84,5 +118,6 @@ describe('stageFromResolver', () => {
 
   it('leaves unknown resolver states unknown', () => {
     expect(stageFromResolver('mystery', 'unrecognized result')).toBe('unknown');
+    expect(stageFromResolver('blocked', '')).toBe('unknown');
   });
 });

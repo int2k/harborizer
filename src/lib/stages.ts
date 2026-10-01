@@ -1,4 +1,4 @@
-import type { HarborStage, HomeSummary, Vessel } from './model';
+import type { HarborStage, HomeSummary, Vessel, VesselWait } from './model';
 
 function stringValue(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -12,9 +12,6 @@ function stageForState(value: unknown): HarborStage {
       return 'under-way';
     case 'validating':
     case 'inspection':
-    case 'parked':
-    case 'paused':
-    case 'blocked':
       return 'inspection';
     case 'pr_open':
     case 'at_quay':
@@ -25,6 +22,18 @@ function stageForState(value: unknown): HarborStage {
       return 'arrived';
     default:
       return 'unknown';
+  }
+}
+
+export function waitForState(value: unknown): VesselWait | null {
+  switch (value) {
+    case 'paused':
+    case 'blocked':
+      return value;
+    case 'parked':
+      return 'held';
+    default:
+      return null;
   }
 }
 
@@ -71,15 +80,17 @@ export function mapSummaryToVessels(summary: HomeSummary): Vessel[] {
     const rowState = stringValue(row.state) ?? (source === 'queued' ? 'queued' : source === 'landed' ? 'arrived' : 'unknown');
     const state = preferRow ? rowState : existing?.state ?? rowState;
     const decision = decisions.get(id)?.join('\n') ?? existing?.decision ?? null;
-    const candidateStage: Vessel['stage'] = source === 'landed'
+    const wait = source === 'landed' ? null : waitForState(rowState) ?? (source === 'hold' ? 'held' : null);
+    const hasPr = Boolean(safeHttpUrl(row.pr_url) ?? existing?.prUrl);
+    const evidenceStage: HarborStage = source === 'landed'
       ? 'arrived'
       : source === 'queued'
         ? 'setting-out'
-        : source === 'hold'
-          ? 'inspection'
+        : wait
+          ? hasPr ? 'quay' : source === 'active' ? 'under-way' : 'unknown'
           : stageForState(rowState);
-    let stage = preferRow ? candidateStage : existing?.stage ?? candidateStage;
-    if (decision && stage !== 'arrived') stage = 'inspection';
+    const candidateStage = evidenceStage === 'unknown' && wait ? existing?.stage ?? 'unknown' : evidenceStage;
+    const stage = preferRow || existing?.stage === 'unknown' ? candidateStage : existing?.stage ?? candidateStage;
     sourcePriority.set(id, Math.max(currentPriority, nextPriority));
 
     const prUrl = safeHttpUrl(row.pr_url) ?? existing?.prUrl ?? null;
@@ -90,6 +101,7 @@ export function mapSummaryToVessels(summary: HomeSummary): Vessel[] {
       kind: stringValue(row.kind) ?? existing?.kind ?? 'unknown',
       stage,
       state,
+      wait: wait ?? existing?.wait ?? null,
       detail: (preferRow ? stringValue(row.doing) ?? stringValue(row.reason) : null) ?? existing?.detail ?? stringValue(row.doing) ?? stringValue(row.reason) ?? '',
       decision,
       since: stringValue(row.since) ?? stringValue((row.completion as Record<string, unknown> | undefined)?.date) ?? existing?.since ?? null,
@@ -110,8 +122,9 @@ export function mapSummaryToVessels(summary: HomeSummary): Vessel[] {
       title: id,
       project: 'Unknown project',
       kind: 'unknown',
-      stage: 'inspection',
+      stage: 'unknown',
       state: 'unknown',
+      wait: null,
       detail: '',
       decision: decisionText.join('\n'),
       since: null,

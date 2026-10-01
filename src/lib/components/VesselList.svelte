@@ -36,7 +36,7 @@
                 {:else}<svg viewBox="0 0 20 20"><path d="M2 12h16l-2.5 4H5.5L2 12Zm7-.7V3l5.5 9M8.5 5.5 5 12" /></svg>{/if}
               </span>
               <span>{vessel.title}</span>
-              {#if vessel.decision}<span class="row-flag">Decision</span>{/if}
+              {#if vessel.decision}<span class="row-flag">Decision</span>{/if}{#if vessel.wait}<span class="row-flag">{vessel.wait}</span>{/if}
             </button>
           </td>
           <td>{vessel.project}</td>
