@@ -194,7 +194,9 @@ pub fn read_summary_file(home: &Path) -> SummaryReadResult {
         }
     };
     match parse_summary(&input) {
-        Ok(summary) => SummaryReadResult::Ready { summary },
+        Ok(summary) => SummaryReadResult::Ready {
+            summary: Box::new(summary),
+        },
         Err(SummaryError::Invalid(reason)) => SummaryReadResult::Invalid { reason },
         Err(SummaryError::Unsupported {
             schema,
@@ -210,7 +212,7 @@ pub fn read_summary_file(home: &Path) -> SummaryReadResult {
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum SummaryReadResult {
     Ready {
-        summary: HomeSummary,
+        summary: Box<HomeSummary>,
     },
     Invalid {
         reason: String,
